@@ -18,13 +18,31 @@
     flake-parts.lib.mkFlake {inherit inputs;} {
       systems = ["x86_64-linux"];
       perSystem = {system, ...}: let
+        readBinaryToolchain = manifest @ {overlay ? final: prev: {}, ...}: final: prev:
+          (overlay final prev)
+          // {
+            lean = (final.callPackage "${inputs.lean4-nix}/lib/toolchain.nix" {}).fetchBinaryLean manifest;
+          };
         pkgs = import inputs.nixpkgs {
           inherit system;
-          overlays = [(inputs.lean4-nix.readToolchainFile ./lean-toolchain)];
+          overlays = [
+            (readBinaryToolchain {
+              tag = "v4.34.1";
+              toolchain = {
+                "${system}" = {
+                  url = "https://github.com/leanprover/lean4/releases/download/v4.34.1/lean-4.34.1-linux.tar.zst";
+                  hash = "sha256-R79LvXj3DC6WcFmKtxJNkrbvtzMP8z5fu0Aw9v1y5OQ=";
+                };
+              };
+            })
+          ];
         };
       in {
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [lean];
+          buildInputs = with pkgs; [
+            lean
+            python3
+          ];
         };
       };
     };
